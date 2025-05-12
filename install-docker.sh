@@ -2,15 +2,15 @@
 
 set -e
 
-echo "🔧 Manual Docker + Compose Installer for Ubuntu 24.04 (No apt)"
+echo "🔧 Manual Docker + Compose Installer for Ubuntu 24.04 (No apt nonsense)"
 
-# Clean any junk
-sudo rm -rf /usr/bin/docker /usr/bin/dockerd /usr/bin/docker* /usr/local/bin/docker-compose
-sudo rm -rf /var/lib/docker /var/lib/containerd
+# Clean previous installs
 sudo systemctl stop docker || true
 sudo systemctl disable docker || true
+sudo rm -rf /usr/bin/docker /usr/bin/dockerd /usr/bin/docker* /usr/local/bin/docker-compose
+sudo rm -rf /var/lib/docker /var/lib/containerd
 
-# Download Docker binary
+# Download Docker binaries
 echo "📦 Downloading Docker binaries..."
 curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-25.0.3.tgz -o docker.tgz
 tar xzvf docker.tgz
@@ -24,28 +24,33 @@ sudo curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERS
 -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
 
-# Setup Docker systemd manually
-echo "🛠️ Creating Docker service manually..."
+# Setup systemd service for Docker
+echo "🛠️ Creating Docker systemd service..."
 sudo tee /etc/systemd/system/docker.service > /dev/null <<EOF
 [Unit]
-Description=Docker Service
+Description=Docker Daemon
 After=network.target
 
 [Service]
 ExecStart=/usr/bin/dockerd
 Restart=always
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# Reload systemd and start docker
+# Handle systemd mask issue
+echo "🔓 Unmasking Docker service if needed..."
+sudo systemctl unmask docker.service || true
+
+# Enable and start Docker service
+echo "🚀 Enabling & starting Docker service..."
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
-sudo systemctl enable docker
-sudo systemctl start docker
+sudo systemctl enable --now docker
 
-# Permissions
+# Add user to docker group
 sudo groupadd docker 2>/dev/null || true
 sudo usermod -aG docker $USER
 newgrp docker
@@ -57,4 +62,4 @@ docker --version
 echo "✅ Docker Compose installed:"
 docker-compose --version
 
-echo "🔥 Done! Docker running without apt package problems. Restart terminal or run: newgrp docker"
+echo "✅ Done! Restart terminal or run: newgrp docker"
